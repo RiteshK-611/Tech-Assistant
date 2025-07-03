@@ -7,7 +7,7 @@ export function Logo() {
         <Cpu className="h-6 w-6 text-primary" />
       </div>
       <h1 className="text-xl sm:text-2xl font-bold font-headline tracking-tight">
-        ShopFloor AI Assist
+          Tech Assistant
       </h1>
     </div>
   );

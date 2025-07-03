@@ -285,8 +285,8 @@ export default function Home() {
         <Input
           id="serial-number-input"
           placeholder="Enter or correct serial number"
-          value={selectedSerialNumber}
-          onChange={(e) => setSelectedSerialNumber(e.target.value)}
+          defaultValue={selectedSerialNumber}
+          onInput={(e) => setSelectedSerialNumber(e.currentTarget.value)}
           className="font-mono tracking-wider"
         />
       </div>
@@ -313,7 +313,7 @@ export default function Home() {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-2xl font-headline">Step 1: Upload & Extract</CardTitle>
+                <CardTitle className="text-2xl font-headline">Upload & Extract</CardTitle>
                 <CardDescription>Upload an image or document to find the serial number.</CardDescription>
               </div>
               <HelpTooltip stepDescription="Uploading an image or document to find a serial number." />

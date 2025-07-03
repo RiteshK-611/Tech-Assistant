@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'ShopFloor AI Assist',
+  title: 'Tech Assistant',
   description: 'AI-powered serial number extraction for technicians.',
 };
 
