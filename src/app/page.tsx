@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { HelpTooltip } from "@/components/common/help-tooltip";
-import { extractSerialNumber, fetchProductInfo } from "./actions";
+import { extractSerialNumber, fetchProductInfo, searchProductInfo } from "./actions";
 import { Logo } from "@/components/logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +38,7 @@ export default function Home() {
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
   const [productInfo, setProductInfo] = useState<Product | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [searchStatusMessage, setSearchStatusMessage] = useState<string | null>(null);
 
   const [showManualReviewSuccess, setShowManualReviewSuccess] = useState(false);
 
@@ -66,6 +67,7 @@ export default function Home() {
     setProductInfo(null);
     setFetchError(null);
     setShowManualReviewSuccess(false);
+    setSearchStatusMessage(null);
 
     const reader = new FileReader();
     reader.onload = async () => {
@@ -97,6 +99,15 @@ export default function Home() {
     };
     reader.readAsDataURL(file);
   };
+  
+  const readFileAsDataUri = (fileToRead: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(fileToRead);
+    });
+  };
 
   const handleFetchInfoClick = async () => {
     if (!selectedSerialNumber) return;
@@ -106,15 +117,70 @@ export default function Home() {
     setProductInfo(null);
     setShowManualReviewSuccess(false);
 
+    // 1. Check DB
+    setSearchStatusMessage("Checking internal database...");
     try {
       const info = await fetchProductInfo({ serialNumber: selectedSerialNumber });
       setProductInfo(info);
-    } catch (error) {
-      setFetchError("Product information not found. You can submit this serial number for manual review.");
-    } finally {
+      setSearchStatusMessage(null);
       setIsFetchingInfo(false);
+      return;
+    } catch (error) {
+      // Not found, continue to AI search.
+    }
+
+    // 2. AI search with serial number
+    setSearchStatusMessage("Not in DB. Searching online with serial number...");
+    try {
+        const aiResult = await searchProductInfo({ serialNumber: selectedSerialNumber });
+        if (aiResult.found && aiResult.product) {
+            setProductInfo({
+                ...aiResult.product,
+                id: selectedSerialNumber,
+                imageUrl: 'https://placehold.co/400x400.png',
+            });
+            setSearchStatusMessage(null);
+            setIsFetchingInfo(false);
+            return;
+        }
+    } catch(e) {
+        console.error("AI search (S/N) failed", e);
+    }
+    
+    // 3. AI search with image if available
+    if (file) {
+        setSearchStatusMessage("No clear result. Searching again with image context...");
+        try {
+            const dataUri = await readFileAsDataUri(file);
+            const aiResultWithImage = await searchProductInfo({
+                serialNumber: selectedSerialNumber,
+                fileDataUri: dataUri
+            });
+            
+            if (aiResultWithImage.found && aiResultWithImage.product) {
+                setProductInfo({
+                    ...aiResultWithImage.product,
+                    id: selectedSerialNumber,
+                    imageUrl: 'https://placehold.co/400x400.png'
+                });
+                setSearchStatusMessage(null);
+            } else {
+                setFetchError("Product information not found. You can submit this serial number for manual review.");
+                setSearchStatusMessage(null);
+            }
+        } catch (e) {
+             setFetchError("An AI error occurred during image search. You can submit for manual review.");
+             setSearchStatusMessage(null);
+        } finally {
+            setIsFetchingInfo(false);
+        }
+    } else {
+        setFetchError("Product information not found. You can submit for manual review.");
+        setSearchStatusMessage(null);
+        setIsFetchingInfo(false);
     }
   };
+
 
   const handleManualReviewSubmit = () => {
     setShowManualReviewSuccess(true);
@@ -133,6 +199,7 @@ export default function Home() {
     setProductInfo(null);
     setFetchError(null);
     setShowManualReviewSuccess(false);
+    setSearchStatusMessage(null);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -235,22 +302,6 @@ export default function Home() {
     </div>
   );
 
-  const ProductInfoLoading = () => (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-3/4" />
-      </CardHeader>
-      <CardContent className="flex flex-col sm:flex-row gap-6">
-        <Skeleton className="h-40 w-full sm:w-1/3 rounded-lg" />
-        <div className="flex-1 space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-5/6" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-body text-foreground">
       <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -285,7 +336,16 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {isFetchingInfo && <ProductInfoLoading />}
+        {isFetchingInfo && (
+           <Card className="w-full shadow-lg">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-center gap-3 text-lg text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <p>{searchStatusMessage || 'Fetching...'}</p>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
 
         {productInfo && (
           <Card className="w-full shadow-lg animate-in fade-in-50">
@@ -295,7 +355,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="grid sm:grid-cols-3 gap-6">
               <div className="sm:col-span-1">
-                <Image src={productInfo.imageUrl} alt={productInfo.name} width={400} height={400} className="rounded-lg border object-cover aspect-square" data-ai-hint="motherboard circuit" />
+                <Image src={productInfo.imageUrl} alt={productInfo.name} width={400} height={400} className="rounded-lg border object-cover aspect-square" data-ai-hint={productInfo.type.toLowerCase().split(' ').slice(0, 2).join(' ')} />
               </div>
               <div className="sm:col-span-2 space-y-4">
                 <h3 className="text-xl font-bold text-primary">{productInfo.name}</h3>

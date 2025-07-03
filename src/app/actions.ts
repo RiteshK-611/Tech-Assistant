@@ -1,6 +1,7 @@
 'use server';
 import { generateHelpText as genHelp, GenerateHelpTextInput, GenerateHelpTextOutput } from '@/ai/flows/ai-powered-help';
 import { extractSerialNumber as extractSN, ExtractSerialNumberInput, ExtractSerialNumberOutput } from '@/ai/flows/extract-serial-number';
+import { searchProductInfo as searchProd, SearchProductInfoInput, SearchProductInfoOutput } from '@/ai/flows/search-product-info';
 import { z } from 'zod';
 
 export async function generateHelpText(input: GenerateHelpTextInput): Promise<GenerateHelpTextOutput> {
@@ -9,6 +10,10 @@ export async function generateHelpText(input: GenerateHelpTextInput): Promise<Ge
 
 export async function extractSerialNumber(input: ExtractSerialNumberInput): Promise<ExtractSerialNumberOutput> {
     return extractSN(input);
+}
+
+export async function searchProductInfo(input: SearchProductInfoInput): Promise<SearchProductInfoOutput> {
+    return searchProd(input);
 }
 
 // Mock Product Info Logic
