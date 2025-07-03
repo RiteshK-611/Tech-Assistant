@@ -35,10 +35,14 @@ const prompt = ai.definePrompt({
   name: 'extractSerialNumberPrompt',
   input: {schema: ExtractSerialNumberInputSchema},
   output: {schema: ExtractSerialNumberOutputSchema},
-  prompt: `You are an expert OCR reader specializing in extracting serial numbers from images or documents.
+  prompt: `You are an expert OCR reader specializing in extracting serial numbers from various file types including images, PDFs, and documents.
 
-You will use this information to extract the serial number from the image or document.
-If you detect multiple possible serial numbers, return all of them in the serialNumbers array.
+Your task is to analyze the provided file and extract any potential serial numbers you find. The file could be an image of a component, or it could be a document (like a PDF or Word file) that contains images or text describing a component.
+
+Look for alphanumeric strings that are labeled as or appear to be serial numbers (often prefixed with S/N, SN, Serial No., etc.).
+If the file is a document, scan both the text and any embedded images for serial numbers.
+
+If you detect multiple possible serial numbers, return all of them. If you find none, return an empty array.
 
 File: {{media url=fileDataUri}}`,
 });

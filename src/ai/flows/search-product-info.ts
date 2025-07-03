@@ -41,7 +41,7 @@ const prompt = ai.definePrompt({
     name: 'searchProductInfoPrompt',
     input: {schema: SearchProductInfoInputSchema},
     output: {schema: SearchProductInfoOutputSchema},
-    prompt: `You are an expert at identifying electronic components and parts from serial numbers and images. Your task is to find information about a product based on the provided serial number and an optional image.
+    prompt: `You are an expert at identifying electronic components and parts from serial numbers and files. Your task is to find information about a product based on the provided serial number and an optional file.
 
 Search the web for product details. Be thorough.
 
@@ -52,8 +52,8 @@ If you cannot find any information or are not confident in the result, set 'foun
 Serial Number: {{{serialNumber}}}
 
 {{#if fileDataUri}}
-You have also been provided with an image of the product. Use it as additional context for your search.
-Image: {{media url=fileDataUri}}
+You have also been provided with a file (image, PDF, or document) of the product. Use it as additional context for your search. Analyze any text or embedded images within the file.
+File: {{media url=fileDataUri}}
 {{/if}}
 `,
 });
