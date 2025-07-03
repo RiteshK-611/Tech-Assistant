@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, useEffect } from "react";
 import Image from "next/image";
 import { Upload, FileText, Cpu, Package, Factory, Info, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,14 @@ export default function Home() {
   const [showManualReviewSuccess, setShowManualReviewSuccess] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const serialInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (serialInputRef.current) {
+      serialInputRef.current.focus();
+    }
+  }, [selectedSerialNumber]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -180,7 +187,6 @@ export default function Home() {
     }
   };
 
-
   const handleManualReviewSubmit = () => {
     setShowManualReviewSuccess(true);
     setFetchError(null);
@@ -283,10 +289,11 @@ export default function Home() {
       <div className="space-y-2">
         <Label htmlFor="serial-number-input">Serial Number</Label>
         <Input
+          ref={serialInputRef}
           id="serial-number-input"
           placeholder="Enter or correct serial number"
-          defaultValue={selectedSerialNumber}
-          onInput={(e) => setSelectedSerialNumber(e.currentTarget.value)}
+          value={selectedSerialNumber}          
+          onChange={(e) => setSelectedSerialNumber(e.target.value)}
           className="font-mono tracking-wider"
         />
       </div>
