@@ -2,6 +2,7 @@
 import { generateHelpText as genHelp, GenerateHelpTextInput, GenerateHelpTextOutput } from '@/ai/flows/ai-powered-help';
 import { extractSerialNumber as extractSN, ExtractSerialNumberInput, ExtractSerialNumberOutput } from '@/ai/flows/extract-serial-number';
 import { searchProductInfo as searchProd, SearchProductInfoInput, SearchProductInfoOutput } from '@/ai/flows/search-product-info';
+import { generateImageFromDocument as genImage, GenerateImageFromDocumentInput, GenerateImageFromDocumentOutput } from '@/ai/flows/generate-image-from-document';
 import { z } from 'zod';
 
 export async function generateHelpText(input: GenerateHelpTextInput): Promise<GenerateHelpTextOutput> {
@@ -15,6 +16,11 @@ export async function extractSerialNumber(input: ExtractSerialNumberInput): Prom
 export async function searchProductInfo(input: SearchProductInfoInput): Promise<SearchProductInfoOutput> {
     return searchProd(input);
 }
+
+export async function generateImageFromDocument(input: GenerateImageFromDocumentInput): Promise<GenerateImageFromDocumentOutput> {
+    return genImage(input);
+}
+
 
 // Mock Product Info Logic
 interface Product {

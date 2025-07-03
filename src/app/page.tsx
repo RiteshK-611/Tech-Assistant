@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { HelpTooltip } from "@/components/common/help-tooltip";
-import { extractSerialNumber, fetchProductInfo, searchProductInfo } from "./actions";
+import { extractSerialNumber, fetchProductInfo, searchProductInfo, generateImageFromDocument } from "./actions";
 import { Logo } from "@/components/logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -116,6 +116,30 @@ export default function Home() {
     }
   };
 
+  const processFoundProduct = async (productData: any) => {
+    const productWithBaseInfo = {
+        ...productData,
+        id: selectedSerialNumber,
+        imageUrl: filePreview || 'https://placehold.co/400x400.png',
+    };
+    setProductInfo(productWithBaseInfo);
+
+    if (!filePreview && fileDataUri && productData.name) {
+        setSearchStatusMessage("Extracting product image from document...");
+        try {
+            const imageResult = await generateImageFromDocument({
+                fileDataUri,
+                productName: productData.name,
+            });
+            if (imageResult.imageDataUri) {
+                setProductInfo(prev => prev ? { ...prev, imageUrl: imageResult.imageDataUri } : null);
+            }
+        } catch (imgErr) {
+            console.error("Failed to generate image from document", imgErr);
+        }
+    }
+  };
+
   const handleFetchInfoClick = async () => {
     if (!selectedSerialNumber) return;
 
@@ -123,6 +147,7 @@ export default function Home() {
     setFetchError(null);
     setProductInfo(null);
     setShowManualReviewSuccess(false);
+    setSearchStatusMessage(null);
 
     // 1. Check DB
     setSearchStatusMessage("Checking internal database...");
@@ -141,11 +166,7 @@ export default function Home() {
     try {
         const aiResult = await searchProductInfo({ serialNumber: selectedSerialNumber });
         if (aiResult.found && aiResult.product) {
-            setProductInfo({
-                ...aiResult.product,
-                id: selectedSerialNumber,
-                imageUrl: filePreview || 'https://placehold.co/400x400.png',
-            });
+            await processFoundProduct(aiResult.product);
             setSearchStatusMessage(null);
             setIsFetchingInfo(false);
             return;
@@ -154,9 +175,9 @@ export default function Home() {
         console.error("AI search (S/N) failed", e);
     }
     
-    // 3. AI search with image if available
+    // 3. AI search with file context
     if (fileDataUri) {
-        setSearchStatusMessage("No clear result. Searching again with image context...");
+        setSearchStatusMessage("No clear result. Searching again with file context...");
         try {
             const aiResultWithImage = await searchProductInfo({
                 serialNumber: selectedSerialNumber,
@@ -164,18 +185,14 @@ export default function Home() {
             });
             
             if (aiResultWithImage.found && aiResultWithImage.product) {
-                setProductInfo({
-                    ...aiResultWithImage.product,
-                    id: selectedSerialNumber,
-                    imageUrl: filePreview || 'https://placehold.co/400x400.png'
-                });
+                await processFoundProduct(aiResultWithImage.product);
                 setSearchStatusMessage(null);
             } else {
                 setFetchError("Product information not found. You can submit this serial number for manual review.");
                 setSearchStatusMessage(null);
             }
         } catch (e) {
-             setFetchError("An AI error occurred during image search. You can submit for manual review.");
+             setFetchError("An AI error occurred during search. You can submit for manual review.");
              setSearchStatusMessage(null);
         } finally {
             setIsFetchingInfo(false);
@@ -354,7 +371,7 @@ export default function Home() {
             </Card>
         )}
 
-        {productInfo && (
+        {productInfo && !isFetchingInfo && (
           <Card className="w-full shadow-lg animate-in fade-in-50">
             <CardHeader>
                 <CardTitle className="text-2xl font-headline">Product Information</CardTitle>
@@ -374,6 +391,17 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {searchStatusMessage && !productInfo && isFetchingInfo && (
+          <Card className="w-full shadow-lg">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-center gap-3 text-lg text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <p>{searchStatusMessage}</p>
+                    </div>
+                </CardContent>
+            </Card>
         )}
 
         {fetchError && (
