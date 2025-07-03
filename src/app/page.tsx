@@ -28,6 +28,7 @@ type Product = {
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [fileDataUri, setFileDataUri] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string | null>(null);
 
   const [isExtracting, setIsExtracting] = useState(false);
@@ -51,6 +52,21 @@ export default function Home() {
       resetState();
       setFile(selectedFile);
       setFileType(selectedFile.type);
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFileDataUri(reader.result as string);
+      };
+      reader.onerror = () => {
+          toast({
+            title: "File Read Error",
+            description: "There was a problem reading your file. Please try again.",
+            variant: "destructive",
+          });
+          resetState();
+      };
+      reader.readAsDataURL(selectedFile);
+
       if (selectedFile.type.startsWith("image/")) {
         setFilePreview(URL.createObjectURL(selectedFile));
       }
@@ -58,7 +74,14 @@ export default function Home() {
   };
 
   const handleExtractClick = async () => {
-    if (!file) return;
+    if (!file || !fileDataUri) {
+      toast({
+        title: "File Error",
+        description: "The file is not ready yet or failed to load. Please try re-uploading.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsExtracting(true);
     setExtractionError(null);
@@ -69,44 +92,21 @@ export default function Home() {
     setShowManualReviewSuccess(false);
     setSearchStatusMessage(null);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-        try {
-            const dataUri = reader.result as string;
-            const result = await extractSerialNumber({ fileDataUri: dataUri });
-            if (result.serialNumbers && result.serialNumbers.length > 0) {
-                setSerialNumbers(result.serialNumbers);
-                if (result.serialNumbers.length === 1) {
-                    setSelectedSerialNumber(result.serialNumbers[0]);
-                }
-            } else {
-                setExtractionError("No serial number could be extracted. Please enter it manually.");
+    try {
+        const result = await extractSerialNumber({ fileDataUri });
+        if (result.serialNumbers && result.serialNumbers.length > 0) {
+            setSerialNumbers(result.serialNumbers);
+            if (result.serialNumbers.length === 1) {
+                setSelectedSerialNumber(result.serialNumbers[0]);
             }
-        } catch (error) {
-            setExtractionError("An AI error occurred during extraction. Please try again or enter manually.");
-        } finally {
-            setIsExtracting(false);
+        } else {
+            setExtractionError("No serial number could be extracted. Please enter it manually.");
         }
-    };
-    reader.onerror = () => {
-        setExtractionError("Failed to read the file. Please try a different file.");
+    } catch (error) {
+        setExtractionError("An AI error occurred during extraction. Please try again or enter manually.");
+    } finally {
         setIsExtracting(false);
-        toast({
-          title: "File Read Error",
-          description: "There was a problem reading your file. Please try again.",
-          variant: "destructive",
-        });
-    };
-    reader.readAsDataURL(file);
-  };
-  
-  const readFileAsDataUri = (fileToRead: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(fileToRead);
-    });
+    }
   };
 
   const handleFetchInfoClick = async () => {
@@ -137,7 +137,7 @@ export default function Home() {
             setProductInfo({
                 ...aiResult.product,
                 id: selectedSerialNumber,
-                imageUrl: 'https://placehold.co/400x400.png',
+                imageUrl: filePreview || 'https://placehold.co/400x400.png',
             });
             setSearchStatusMessage(null);
             setIsFetchingInfo(false);
@@ -148,20 +148,19 @@ export default function Home() {
     }
     
     // 3. AI search with image if available
-    if (file) {
+    if (fileDataUri) {
         setSearchStatusMessage("No clear result. Searching again with image context...");
         try {
-            const dataUri = await readFileAsDataUri(file);
             const aiResultWithImage = await searchProductInfo({
                 serialNumber: selectedSerialNumber,
-                fileDataUri: dataUri
+                fileDataUri: fileDataUri
             });
             
             if (aiResultWithImage.found && aiResultWithImage.product) {
                 setProductInfo({
                     ...aiResultWithImage.product,
                     id: selectedSerialNumber,
-                    imageUrl: 'https://placehold.co/400x400.png'
+                    imageUrl: filePreview || 'https://placehold.co/400x400.png'
                 });
                 setSearchStatusMessage(null);
             } else {
@@ -190,6 +189,7 @@ export default function Home() {
   const resetState = () => {
     setFile(null);
     setFilePreview(null);
+    setFileDataUri(null);
     setFileType(null);
     setIsExtracting(false);
     setExtractionError(null);
@@ -245,7 +245,7 @@ export default function Home() {
           <span className="sr-only">Remove file</span>
         </Button>
       </div>
-      <Button onClick={handleExtractClick} disabled={isExtracting} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+      <Button onClick={handleExtractClick} disabled={isExtracting || !fileDataUri} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
         {isExtracting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -287,7 +287,7 @@ export default function Home() {
           placeholder="Enter or correct serial number"
           value={selectedSerialNumber}
           onChange={(e) => setSelectedSerialNumber(e.target.value)}
-          className="font-mono text-base tracking-wider"
+          className="font-mono tracking-wider"
         />
       </div>
 
