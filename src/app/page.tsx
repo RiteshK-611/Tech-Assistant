@@ -360,7 +360,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {isFetchingInfo && (
+        {/* {isFetchingInfo && (
            <Card className="w-full shadow-lg">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-center gap-3 text-lg text-muted-foreground">
@@ -369,7 +369,7 @@ export default function Home() {
                     </div>
                 </CardContent>
             </Card>
-        )}
+        )} */}
 
         {productInfo && !isFetchingInfo && (
           <Card className="w-full shadow-lg animate-in fade-in-50">
